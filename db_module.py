@@ -1,6 +1,5 @@
 from datetime import date
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, create_engine
-# from sqlalchemy.sql import select, update
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -37,19 +36,51 @@ class TicketsComments(Base):
     #     self.ticket_id = ticket_id
     #     self.email = email
     #     self.text = text
-    def __repr__(self): 
+    def __repr__(self):
         return "<TicketsComments('%s','%s','%s','%s')>" % (self.ticket_id, self.create_date, self.email, self.text)
 
 # Base.metadata.create_all(engine)
 
+def get_tickets_count():
+    tickets = session.query(Tickets).count()
+    # print(tickets)
+    return tickets 
+
 def create_ticket(topic, text, email):
-    ticket = Tickets(topic, text, email)
+    ''' Создание тикета '''
+    print(topic, text, email)
+    ticket = Tickets(topic=topic, text=text, email=email)
     session.add(ticket)
-    # print(ticket.id)
     session.commit()
-    # print(ticket.id)
     return ticket.id
 
+def get_ticket_status(ticket_id):
+    query = session.query(Tickets).filter(Tickets.id == ticket_id)
+    ticket = query.first()
+    if ticket:
+        return {'status':ticket.status}
+    else:
+        return {'status':'ticket not found'}
+
+def get_ticket(ticket_id):
+    print(ticket_id)
+    query = session.query(Tickets).filter(Tickets.id == ticket_id)
+    ticket = query.first()
+    if ticket:
+        ticket_dict = {'id':ticket.id,
+                    'topic':ticket.topic,
+                    'text':ticket.text,
+                    'email':ticket.email,
+                    'status':ticket.status,
+                    'create_date':str(ticket.create_date),
+                    'update_date':str(ticket.update_date)}
+        comments = get_comments(ticket_id)
+        print(comments)
+        ticket_dict['comments'] = comments
+        print(ticket_dict)
+        return ticket_dict
+    else:
+        return {'status':'ticket not found'}
 
 def update_status(ticket_id, status):
     query = session.query(Tickets).filter(Tickets.id == ticket_id)
@@ -59,15 +90,20 @@ def update_status(ticket_id, status):
     print(ticket)
     return ticket.id
 
-def get_ticket(ticket_id):
-    query = session.query(Tickets).filter(Tickets.id == ticket_id)
-    ticket = query.first()
-    # print(ticket)
-    return ticket
-
 def add_comment(text, email, ticket_id):
     ticket_comment = TicketsComments()
-    
+
+def get_comments(ticket_id):
+    query = session.query(TicketsComments).filter(TicketsComments.ticket_id == ticket_id)
+    comments = query.all()
+    tasks_comments = []
+    for comment in comments:
+        comment_dict = {'id':comment.id,
+                    'text':comment.text,
+                    'email':comment.email,
+                    'create_date':str(comment.create_date)}
+        tasks_comments.append(comment_dict)
+    return tasks_comments
 
 Session = sessionmaker(engine)
 session = Session()
@@ -76,7 +112,9 @@ session = Session()
 
 # print(create_ticket(topic='третий тестовый тикет', text='Какой-то текст третьего тестового тикета бла бла', email='566@test.ru'))
 # print(update_status(ticket_id=2, status='ожидает ответа'))
-print(get_ticket(3))
+# print(get_ticket(3))
 
 # session.add(first_ticket)
 # session.commit()
+
+# Не забыть посмотреть про сессию ,надо ли закрывать и открывать при каждой орперации?
