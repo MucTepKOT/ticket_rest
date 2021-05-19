@@ -5,6 +5,8 @@ from sqlalchemy.ext.declarative import declarative_base
 
 engine = create_engine('postgresql://postgres:postgres@localhost/tickets_db', echo=True)
 # Флаг echo включает ведение лога через стандартный модуль logging Питона.
+Session = sessionmaker(engine)
+session = Session()
 
 Base = declarative_base()
 
@@ -43,7 +45,6 @@ class TicketsComments(Base):
 
 def get_tickets_count():
     tickets = session.query(Tickets).count()
-    # print(tickets)
     return tickets 
 
 def create_ticket(topic, text, email):
@@ -51,16 +52,12 @@ def create_ticket(topic, text, email):
     print(topic, text, email)
     ticket = Tickets(topic=topic, text=text, email=email)
     session.add(ticket)
-    session.commit()
-    return ticket.id
-
-def get_ticket_status(ticket_id):
-    query = session.query(Tickets).filter(Tickets.id == ticket_id)
-    ticket = query.first()
-    if ticket:
-        return {'status':ticket.status}
-    else:
-        return {'status':'ticket not found'}
+    try:
+        session.commit()
+        return ticket.id
+    except:
+        session.rollback()
+        raise
 
 def get_ticket(ticket_id):
     print(ticket_id)
@@ -80,19 +77,41 @@ def get_ticket(ticket_id):
         print(ticket_dict)
         return ticket_dict
     else:
-        return {'status':'ticket not found'}
+        return None
 
-def update_status(ticket_id, status):
+# def get_ticket_status(ticket_id):
+#     query = session.query(Tickets).filter(Tickets.id == ticket_id)
+#     ticket = query.first()
+#     # print(ticket.status)
+#     return ticket.status
+
+def update_ticket_status(ticket_id, status):
     query = session.query(Tickets).filter(Tickets.id == ticket_id)
     ticket = query.first()
     ticket.status = status
-    session.commit()
-    print(ticket)
-    return ticket.id
+    try:
+        session.commit()
+        return ticket.id
+    except:
+        session.rollback()
+        raise
 
-def add_comment(text, email, ticket_id):
-    ticket_comment = TicketsComments()
+def check_ticket(ticket_id):
+    query = session.query(Tickets).filter(Tickets.id == ticket_id)
+    res = session.query(query.exists()).scalar()
+    print(res)
+    return res
 
+def add_comment(ticket_id, text, email):
+    ticket_comment = TicketsComments(ticket_id=ticket_id, text=text, email=email)
+    try:
+        session.add(ticket_comment)
+        session.commit()
+        return ticket_comment.ticket_id
+    except:
+        session.rollback()
+        raise
+    
 def get_comments(ticket_id):
     query = session.query(TicketsComments).filter(TicketsComments.ticket_id == ticket_id)
     comments = query.all()
@@ -104,17 +123,3 @@ def get_comments(ticket_id):
                     'create_date':str(comment.create_date)}
         tasks_comments.append(comment_dict)
     return tasks_comments
-
-Session = sessionmaker(engine)
-session = Session()
-
-# ticket = Tickets(topic='второй тестовый тикет', text='Какой-то текст второго тестового тикета бла бла', email='555@test.ru')
-
-# print(create_ticket(topic='третий тестовый тикет', text='Какой-то текст третьего тестового тикета бла бла', email='566@test.ru'))
-# print(update_status(ticket_id=2, status='ожидает ответа'))
-# print(get_ticket(3))
-
-# session.add(first_ticket)
-# session.commit()
-
-# Не забыть посмотреть про сессию ,надо ли закрывать и открывать при каждой орперации?
