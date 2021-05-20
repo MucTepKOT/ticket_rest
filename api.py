@@ -1,13 +1,12 @@
+import logging
 from flask import Flask, request
 from flask_restful import Resource, Api, abort, reqparse
-from sqlalchemy.sql.expression import text
 import db_module
 
 app = Flask(__name__)
 api = Api(app)
 
 parser = reqparse.RequestParser()
-parser.add_argument('comment', type=str)
 
 class MainPage(Resource):
     def get(self):
@@ -18,15 +17,19 @@ class Tickets(Resource):
         tickets_count = db_module.get_tickets_count()
         return({"tickets_count":tickets_count})
     def post(self):
-        parser.add_argument('topic', type=str, required=True, help='Тикет не может быть создан без темы')
-        parser.add_argument('text', type=str, required=True, help='Тикет не может быть пустым')
-        parser.add_argument('email',  type=str, required=True, help='Тикет не может быть создан без указания email создателя тикета')
-        args = parser.parse_args()
+        print(request.json)
+        parser_copy = parser.copy()
+        parser_copy.add_argument('topic', type=str, required=True, help='Тикет не может быть создан без темы')
+        parser_copy.add_argument('text', type=str, required=True, help='Тикет не может быть пустым')
+        parser_copy.add_argument('email',  type=str, required=True, help='Тикет не может быть создан без указания email создателя тикета')
+        args = parser_copy.parse_args()
         topic = args['topic']
         text = args['text']
         email = args['email']
         ticket_creation_result = db_module.create_ticket(topic, text, email)
-        return ticket_creation_result, 201
+        
+        return {'ticket_id':ticket_creation_result,
+                'info':'Тикет создан'}, 201
 
 class Ticket(Resource):
     def get(self, ticket_id):
@@ -38,46 +41,53 @@ class Ticket(Resource):
             abort(404, description='Тикет не найден')
     
     def patch(self, ticket_id):
-        '''Надо затестить'''
         print(request.json)
-        parser.add_argument('status', type=str, required=True)
-        args = parser.parse_args()
-        new_status = args['status']
-        print(f'Новый статус: {new_status}')
-
         if db_module.check_ticket(ticket_id) == True:
+            parser_copy = parser.copy()
+            parser_copy.add_argument('status', type=str, required=True)
+            args = parser_copy.parse_args()
+            new_status = args['status']
             ticket = db_module.get_ticket(ticket_id)
+            # print(ticket)
             ticket_status_now = ticket['status']
-            print(ticket_status_now)
+            # print(f'СТАРЫЙ СТАТУС: {ticket_status_now}')
+            # print(f'НОВЫЙ СТАТУС: {new_status}')
             if ticket_status_now == 'открыт':
-                if new_status == 'отвечен' or 'закрыт':
+                print(new_status)
+                if new_status in {'отвечен', 'закрыт'}:
                     db_module.update_ticket_status(ticket_id, new_status)
+                    return {'ticket_id':ticket_id,
+                            'info':'Статус обновлен'}, 200
                 else:
-                    abort(422, description=f'Передан некорректный статус. Текущий статус - ОТКРЫТ')
+                    abort(422, description=f'Передан некорректный статус. Текущий статус - {ticket_status_now}')
             elif ticket_status_now == 'отвечен':
-                if new_status == 'ожидает ответа' or 'закрыт':
+                if new_status in {'ожидает ответа', 'закрыт'}:
                     db_module.update_ticket_status(ticket_id, new_status)
+                    return {'ticket_id':ticket_id,
+                            'info':'Статус обновлен'}, 200
                 else:
-                    abort(422, description=f'Передан некорректный статус. Текущий статус - ОТВЕЧЕН')
+                    abort(422, description=f'Передан некорректный статус. Текущий статус - {ticket_status_now}')
             elif ticket_status_now == 'ожидает ответа':
-                if new_status == 'отвечен' or 'закрыт':
+                if new_status in {'отвечен', 'закрыт'}:
                     db_module.update_ticket_status(ticket_id, new_status)
+                    return {'ticket_id':ticket_id,
+                            'info':'Статус обновлен'}, 200
                 else:
-                    abort(422, description=f'Передан некорректный статус. Текущий статус - ОЖИДАЕТ ОТВЕТА')
+                    abort(422, description=f'Передан некорректный статус. Текущий статус - {ticket_status_now}')
             elif ticket_status_now == 'закрыт':
-                abort(422, description='Нельзя редактировать тикет со статусом ЗАКРЫТ')
+                abort(422, description=f'Нельзя редактировать тикет со статусом {ticket_status_now}')
         else:
             abort(404, description=f'Тикет с id {ticket_id} не найден')
                 
 class Comments(Resource):
     def post(self, ticket_id):
-        parser.add_argument('text', type=str, required=True, help='Комментарий не может быть пустым')
-        parser.add_argument('email', type=str, required=True, help='Комментарий не может быть создан без указания email комментатора')
-        args = parser.parse_args()
-        text = args['text']
-        email = args['email']
-
         if db_module.check_ticket(ticket_id) == True:
+            parser_copy = parser.copy()
+            parser_copy.add_argument('text', type=str, required=True, help='Комментарий не может быть пустым')
+            parser_copy.add_argument('email', type=str, required=True, help='Комментарий не может быть создан без указания email комментатора')
+            args = parser_copy.parse_args()
+            text = args['text']
+            email = args['email']
             ticket = db_module.get_ticket(ticket_id)
             ticket_status = ticket['status']
             print(ticket)
