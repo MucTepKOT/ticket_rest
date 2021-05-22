@@ -8,16 +8,13 @@ api = Api(app)
 
 parser = reqparse.RequestParser()
 
-class MainPage(Resource):
-    def get(self):
-        return ('Hi, this is awesome ticket system')
-
 class Tickets(Resource):
     def get(self):
+        '''Получить общее кол-во тикетов'''
         tickets_count = db_module.get_tickets_count()
         return({"tickets_count":tickets_count})
     def post(self):
-        print(request.json)
+        '''Создать тикет'''
         parser_copy = parser.copy()
         parser_copy.add_argument('topic', type=str, required=True, help='Тикет не может быть создан без темы')
         parser_copy.add_argument('text', type=str, required=True, help='Тикет не может быть пустым')
@@ -33,27 +30,23 @@ class Tickets(Resource):
 
 class Ticket(Resource):
     def get(self, ticket_id):
+        '''Получить тикет по id'''
         if ticket_id:
             ticket = db_module.get_ticket(ticket_id)
-            print(type(ticket))
             return ticket
         else:
             abort(404, description='Тикет не найден')
     
     def patch(self, ticket_id):
-        print(request.json)
+        '''Обновить статус тикета'''
         if db_module.check_ticket(ticket_id) == True:
             parser_copy = parser.copy()
             parser_copy.add_argument('status', type=str, required=True)
             args = parser_copy.parse_args()
             new_status = args['status']
             ticket = db_module.get_ticket(ticket_id)
-            # print(ticket)
             ticket_status_now = ticket['status']
-            # print(f'СТАРЫЙ СТАТУС: {ticket_status_now}')
-            # print(f'НОВЫЙ СТАТУС: {new_status}')
             if ticket_status_now == 'открыт':
-                print(new_status)
                 if new_status in {'отвечен', 'закрыт'}:
                     db_module.update_ticket_status(ticket_id, new_status)
                     return {'ticket_id':ticket_id,
@@ -81,6 +74,7 @@ class Ticket(Resource):
                 
 class Comments(Resource):
     def post(self, ticket_id):
+        '''Добавить комментарий к тикету'''
         if db_module.check_ticket(ticket_id) == True:
             parser_copy = parser.copy()
             parser_copy.add_argument('text', type=str, required=True, help='Комментарий не может быть пустым')
@@ -90,7 +84,6 @@ class Comments(Resource):
             email = args['email']
             ticket = db_module.get_ticket(ticket_id)
             ticket_status = ticket['status']
-            print(ticket)
             if ticket_status == 'закрыт':
                 abort(422, description='Нельзя комментировать тикет со статусом ЗАКРЫТ')
             else:
@@ -102,7 +95,6 @@ class Comments(Resource):
         else:
             abort(404, description=f'Тикет с id {ticket_id} не найден')
 
-api.add_resource(MainPage, '/')
 api.add_resource(Tickets, '/tickets')
 api.add_resource(Ticket, '/tickets/<int:ticket_id>')
 api.add_resource(Comments, '/tickets/<int:ticket_id>/comments')

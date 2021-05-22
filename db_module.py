@@ -19,10 +19,6 @@ class TicketsTable(Base):
     text = Column(String(2000), nullable=False)
     email = Column(String(200), nullable=False)
     status = Column(String(100), nullable=False, default='открыт')
-    # def __init__(self, topic, text, email):
-    #     self.topic = topic
-    #     self.text = text
-    #     self.email = email
     def __repr__(self):
         return "<TicketsTable('%s','%s','%s','%s','%s','%s')>" % (self.create_date, self.update_date, self.topic, self.text, self.email, self.status)
 
@@ -33,22 +29,16 @@ class TicketsCommentsTable(Base):
     create_date = Column(DateTime, nullable=False, default=datetime.now())
     email = Column(String(200), nullable=False)
     text = Column(String(3000), nullable=False)
-    # def __init__(self, ticket_id, email, text):
-    #     self.ticket_id = ticket_id
-    #     self.email = email
-    #     self.text = text
     def __repr__(self):
         return "<TicketsCommentsTable('%s','%s','%s','%s')>" % (self.ticket_id, self.create_date, self.email, self.text)
 
-# Base.metadata.create_all(engine)
-
 def get_tickets_count():
+    '''Получение кол-ва тикетов в postgresql'''
     tickets = session.query(TicketsTable).count()
     return tickets 
 
 def create_ticket(topic, text, email):
-    ''' Создание тикета '''
-    print(topic, text, email)
+    '''Создание тикета в postgresql'''
     ticket = TicketsTable(topic=topic, text=text, email=email)
     session.add(ticket)
     try:
@@ -59,7 +49,7 @@ def create_ticket(topic, text, email):
         raise
 
 def get_ticket(ticket_id):
-    # print(ticket_id)
+    '''Получение тикета из postgresql'''
     query = session.query(TicketsTable).filter(TicketsTable.id == ticket_id)
     ticket = query.first()
     if ticket:
@@ -71,14 +61,13 @@ def get_ticket(ticket_id):
                     'create_date':str(ticket.create_date),
                     'update_date':str(ticket.update_date)}
         comments = get_comments(ticket_id)
-        # print(comments)
-        ticket_dict['comments'] = comments
-        # print(ticket_dict)
+        ticket_dict['comments']        
         return ticket_dict
     else:
         return None
 
 def update_ticket_status(ticket_id, new_status):
+    '''Обновление статуса тикета в postgresql'''
     query = session.query(TicketsTable).filter(TicketsTable.id == ticket_id)
     ticket = query.first()
     ticket.status = new_status
@@ -91,12 +80,13 @@ def update_ticket_status(ticket_id, new_status):
         raise
 
 def check_ticket(ticket_id):
+    '''Проверить, существует ли тикет в postgresql'''
     query = session.query(TicketsTable).filter(TicketsTable.id == ticket_id)
     res = session.query(query.exists()).scalar()
-    print(res)
     return res
 
 def add_comment(ticket_id, text, email):
+    '''Создание комментария для тикета в postgresql'''
     ticket_comment = TicketsCommentsTable(ticket_id=ticket_id, text=text, email=email)
     try:
         session.add(ticket_comment)
@@ -107,6 +97,7 @@ def add_comment(ticket_id, text, email):
         raise
     
 def get_comments(ticket_id):
+    '''Поулучение комментария для тикета в postgresql'''
     query = session.query(TicketsCommentsTable).filter(TicketsCommentsTable.ticket_id == ticket_id)
     comments = query.all()
     tasks_comments = []
