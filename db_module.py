@@ -1,9 +1,13 @@
+import yaml
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-engine = create_engine('postgresql://postgres:postgres@localhost/tickets_db', echo=True, echo_pool='debug')
+with open('D:\\task_manager\\ticket_rest\\config.yml', 'r') as yaml_config:
+    config = yaml.load(yaml_config)
+
+engine = create_engine(config['postgresql_engine'], echo=True, echo_pool='debug')
 
 Session = sessionmaker(engine)
 session = Session()
@@ -74,13 +78,13 @@ def update_ticket_status(ticket_id, new_status):
     ticket.update_date = datetime.now()
     try:
         session.commit()
-        return ticket.id
+        return ticket
     except:
         session.rollback()
         raise
 
 def check_ticket(ticket_id):
-    '''Проверить, существует ли тикет в postgresql'''
+    '''Проверка, существует ли тикет в postgresql'''
     query = session.query(TicketsTable).filter(TicketsTable.id == ticket_id)
     res = session.query(query.exists()).scalar()
     return res
@@ -97,7 +101,7 @@ def add_comment(ticket_id, text, email):
         raise
     
 def get_comments(ticket_id):
-    '''Поулучение комментария для тикета в postgresql'''
+    '''Получение комментария для тикета в postgresql'''
     query = session.query(TicketsCommentsTable).filter(TicketsCommentsTable.ticket_id == ticket_id)
     comments = query.all()
     tasks_comments = []

@@ -1,5 +1,5 @@
 import logging
-from flask import Flask, request
+from flask import Flask
 from flask_restful import Resource, Api, abort, reqparse
 import db_module
 import redis_db
@@ -47,12 +47,15 @@ class Ticket(Resource):
     
     def patch(self, ticket_id):
         '''Обновить статус тикета'''
-        if db_module.check_ticket(ticket_id) == True:
+        check_ticket = db_module.check_ticket(ticket_id)
+        if check_ticket == True:
+            if not redis_db.check_redis_ticket(ticket_id):
+                ticket = db_module.get_ticket(ticket_id)
+                redis_db.create_redis_ticket(ticket)
             parser_copy = parser.copy()
             parser_copy.add_argument('status', type=str, required=True)
             args = parser_copy.parse_args()
             new_status = args['status']
-            ticket = db_module.get_ticket(ticket_id)
             ticket_status_now = ticket['status']
             if ticket_status_now == 'открыт':
                 if new_status in {'отвечен', 'закрыт'}:
@@ -86,7 +89,8 @@ class Ticket(Resource):
 class Comments(Resource):
     def post(self, ticket_id):
         '''Добавить комментарий к тикету'''
-        if db_module.check_ticket(ticket_id) == True:
+        check_ticket = db_module.check_ticket(ticket_id)
+        if check_ticket == True:
             parser_copy = parser.copy()
             parser_copy.add_argument('text', type=str, required=True, help='Комментарий не может быть пустым')
             parser_copy.add_argument('email', type=str, required=True, help='Комментарий не может быть создан без указания email комментатора')
@@ -100,6 +104,8 @@ class Comments(Resource):
             else:
                 comment_creation_result = db_module.add_comment(ticket_id, text, email)
                 if comment_creation_result:
+                    print(ticket)
+                    redis_db.create_redis_ticket(ticket)
                     return f"Для тикета id {comment_creation_result} успешно создан комментарий", 201
                 else:
                     abort(400, description='Создание клмментария произошло с ошибкой. Попробуйте повторить позже.')        
