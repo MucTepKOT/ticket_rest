@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
 engine = create_engine('postgresql://postgres:postgres@localhost/tickets_db', echo=True, echo_pool='debug')
-# Флаг echo включает ведение лога через стандартный модуль logging Питона.
+
 Session = sessionmaker(engine)
 session = Session()
 
@@ -43,7 +43,7 @@ def create_ticket(topic, text, email):
     session.add(ticket)
     try:
         session.commit()
-        return ticket.id
+        return get_ticket(ticket.id)
     except:
         session.rollback()
         raise
@@ -61,7 +61,7 @@ def get_ticket(ticket_id):
                     'create_date':str(ticket.create_date),
                     'update_date':str(ticket.update_date)}
         comments = get_comments(ticket_id)
-        ticket_dict['comments']        
+        ticket_dict['comments'] = comments       
         return ticket_dict
     else:
         return None

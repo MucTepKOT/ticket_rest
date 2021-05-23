@@ -2,6 +2,7 @@ import logging
 from flask import Flask, request
 from flask_restful import Resource, Api, abort, reqparse
 import db_module
+import redis_db
 
 app = Flask(__name__)
 api = Api(app)
@@ -23,16 +24,23 @@ class Tickets(Resource):
         topic = args['topic']
         text = args['text']
         email = args['email']
-        ticket_creation_result = db_module.create_ticket(topic, text, email)
+        ticket = db_module.create_ticket(topic, text, email)
+        ticket_id = ticket['id']
+        redis_ticket_id = redis_db.create_redis_ticket(ticket)
+        print(redis_ticket_id)
         
-        return {'ticket_id':ticket_creation_result,
+        return {'ticket_id':ticket_id,
                 'info':'Тикет создан'}, 201
 
 class Ticket(Resource):
     def get(self, ticket_id):
         '''Получить тикет по id'''
-        if ticket_id:
-            ticket = db_module.get_ticket(ticket_id)
+        redis_ticket = redis_db.get_redis_ticket(ticket_id)
+        ticket = db_module.get_ticket(ticket_id)
+        if redis_ticket:
+            print(redis_ticket)
+            return redis_ticket
+        elif ticket:
             return ticket
         else:
             abort(404, description='Тикет не найден')
@@ -49,6 +57,7 @@ class Ticket(Resource):
             if ticket_status_now == 'открыт':
                 if new_status in {'отвечен', 'закрыт'}:
                     db_module.update_ticket_status(ticket_id, new_status)
+                    redis_db.update_redis_ticket_status(ticket_id, new_status)
                     return {'ticket_id':ticket_id,
                             'info':'Статус обновлен'}, 200
                 else:
@@ -56,6 +65,7 @@ class Ticket(Resource):
             elif ticket_status_now == 'отвечен':
                 if new_status in {'ожидает ответа', 'закрыт'}:
                     db_module.update_ticket_status(ticket_id, new_status)
+                    redis_db.update_redis_ticket_status(ticket_id, new_status)
                     return {'ticket_id':ticket_id,
                             'info':'Статус обновлен'}, 200
                 else:
@@ -63,6 +73,7 @@ class Ticket(Resource):
             elif ticket_status_now == 'ожидает ответа':
                 if new_status in {'отвечен', 'закрыт'}:
                     db_module.update_ticket_status(ticket_id, new_status)
+                    redis_db.update_redis_ticket_status(ticket_id, new_status)
                     return {'ticket_id':ticket_id,
                             'info':'Статус обновлен'}, 200
                 else:
