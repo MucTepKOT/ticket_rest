@@ -117,4 +117,4 @@ api.add_resource(Ticket, '/tickets/<int:ticket_id>')
 api.add_resource(Comments, '/tickets/<int:ticket_id>/comments')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
