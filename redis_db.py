@@ -2,8 +2,8 @@ import redis
 import yaml
 import os
 
-with open('D:\\task_manager\\ticket_rest\\config.yml', 'r') as yaml_config:
-    config = yaml.load(yaml_config)
+with open('/home/muctepkot/ticket_rest/config.yml', 'r') as yaml_config:
+    config = yaml.safe_load(yaml_config)
 
 r = redis.Redis(config['redis']['host'], 
                 config['redis']['port'], 

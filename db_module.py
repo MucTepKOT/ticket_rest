@@ -4,8 +4,8 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, create_eng
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-with open('D:\\task_manager\\ticket_rest\\config.yml', 'r') as yaml_config:
-    config = yaml.load(yaml_config)
+with open('/home/muctepkot/ticket_rest/config.yml', 'r') as yaml_config:
+    config = yaml.safe_load(yaml_config)
 
 engine = create_engine(config['postgresql_engine'], echo=True, echo_pool='debug')
 
